@@ -3,29 +3,14 @@
  * @author     Ahmad Rajabi (Ahmad@rajabi.us)
  * @copyright  2016 Ahmad Rajabi
  */
-    require_once 'conf.php';
+require_once 'conf.php';
+require_once 'functions.php';
 
-  //check Get Data
-    function test_data($data)
-    {
-        $data = trim($data);
-        $data = stripslashes($data);
-        $data = htmlspecialchars($data);
-
-        return $data;
-    }
-  //set variable
-        $Authority = test_data($_GET['Authority']);
-        $status = test_data($_GET['Status']);
-        $invoiceNum = test_data($_GET['oid']);
+	//set variable
+	$Authority = test_data($_GET['Authority']);
+	$status = test_data($_GET['Status']);
+	$invoiceNum = test_data($_GET['oid']);
     $st = 'paid';
-  //signature fungtion
-   function sign($s, $s2, $fi)
-   {
-       $fi = implode('', $fi).$s;
-
-       return hash_hmac('sha512', $fi, $s2);
-   }
 
     $query = 'SELECT * FROM `resello` WHERE `id` = ?';
     $stmt = $db->prepare($query);
@@ -40,21 +25,19 @@
     $signature = sign($secret_key, $secret_key2, $melissa);
 
     if ($status == 'OK') {
-        $client = new SoapClient('https://de.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
+        $client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
 
-        $result = $client->PaymentVerification(
-                                [
-                                        'MerchantID'     => $merchantCode,
-                                        'Authority'      => $Authority,
-                                        'Amount'         => $damount,
-                                    ]
-            );
+        $result = $client->PaymentVerification([
+			'MerchantID'     => $merchantCode,
+			'Authority'      => $Authority,
+			'Amount'         => $damount,
+        ]);
         if ($result->Status == 100) {
             $f = [
-                  'reference' => $reference,
-                  'status'    => 'AUTHORISED',
-                  'signature' => $signature,
-                ];
+                'reference' => $reference,
+                'status'    => 'AUTHORISED',
+                'signature' => $signature,
+			];
 
             $fields_string = '';
 
@@ -93,13 +76,11 @@
 
             $signature = sign($secret_key, $secret_key2, $mahak);
 
-
             $f = [
-
-                  'reference' => $reference,
-                  'status'    => 'FAILED',
-                  'signature' => $signature,
-                ];
+				'reference' => $reference,
+				'status'    => 'FAILED',
+				'signature' => $signature,
+			];
 
             $fields_string = '';
 
@@ -125,13 +106,11 @@
 
         $signature = sign($secret_key, $secret_key2, $mahak);
 
-
         $f = [
-
-                             'reference' => $reference,
-                             'status'    => 'FAILED',
-                             'signature' => $signature,
-                         ];
+			'reference' => $reference,
+			'status'    => 'FAILED',
+			'signature' => $signature,
+        ];
 
         $fields_string = '';
 
