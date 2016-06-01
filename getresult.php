@@ -6,10 +6,10 @@
 require_once 'conf.php';
 require_once 'functions.php';
 
-	//set variable
-	$Authority = test_data($_GET['Authority']);
-	$status = test_data($_GET['Status']);
-	$invoiceNum = test_data($_GET['oid']);
+    //set variable
+    $Authority = test_data($_GET['Authority']);
+    $status = test_data($_GET['Status']);
+    $invoiceNum = test_data($_GET['oid']);
     $st = 'paid';
 
     $query = 'SELECT * FROM `resello` WHERE `id` = ?';
@@ -28,16 +28,16 @@ require_once 'functions.php';
         $client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
 
         $result = $client->PaymentVerification([
-			'MerchantID'     => $merchantCode,
-			'Authority'      => $Authority,
-			'Amount'         => $damount,
+            'MerchantID'     => $merchantCode,
+            'Authority'      => $Authority,
+            'Amount'         => $damount,
         ]);
         if ($result->Status == 100) {
             $f = [
                 'reference' => $reference,
                 'status'    => 'AUTHORISED',
                 'signature' => $signature,
-			];
+            ];
 
             $fields_string = '';
 
@@ -77,10 +77,10 @@ require_once 'functions.php';
             $signature = sign($secret_key, $secret_key2, $mahak);
 
             $f = [
-				'reference' => $reference,
-				'status'    => 'FAILED',
-				'signature' => $signature,
-			];
+                'reference' => $reference,
+                'status'    => 'FAILED',
+                'signature' => $signature,
+            ];
 
             $fields_string = '';
 
@@ -107,9 +107,9 @@ require_once 'functions.php';
         $signature = sign($secret_key, $secret_key2, $mahak);
 
         $f = [
-			'reference' => $reference,
-			'status'    => 'FAILED',
-			'signature' => $signature,
+            'reference' => $reference,
+            'status'    => 'FAILED',
+            'signature' => $signature,
         ];
 
         $fields_string = '';

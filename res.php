@@ -27,41 +27,41 @@ if (isset($_POST['reference']) && isset($_POST['currency']) && isset($_POST['amo
 
     //check fields for not empty
     if (!empty($ref) && !empty($currency) && !empty($amount) && !empty($customer) && !empty($started) && !empty($expires) && !empty($gateway) && !empty($re_url) && !empty($sig)) {
-		// set data to array for generate signature
-		$fields = [
-			'reference' => $ref,
-			'currency' => $currency,
-			'amount' => $amount,
-			'customer' => $customer,
-			'started' => $started,
-			'expires' => $expires,
-			'gateway' => $gateway,
-			'return_url' => $re_url
-		];
+        // set data to array for generate signature
+        $fields = [
+            'reference'  => $ref,
+            'currency'   => $currency,
+            'amount'     => $amount,
+            'customer'   => $customer,
+            'started'    => $started,
+            'expires'    => $expires,
+            'gateway'    => $gateway,
+            'return_url' => $re_url,
+        ];
 
         $sig1 = sign($secret_key, $secret_key2, $fields);
         if ($sig == $sig1) {
-			$query = 'INSERT INTO `resello` (`id` ,`customer` ,`amount` ,`ip` ,`status` ,`recipt` ,`reference` ,`irr`) VALUES (NULL ,?,?,?,?,?,?,?)';
-			$stmt = $db->prepare($query);
-			$stmt->bindParam(1, $customer);
-			$stmt->bindParam(2, $amount);
-			$stmt->bindParam(3, $ip);
-			$stmt->bindParam(4, $status);
-			$stmt->bindParam(5, $recipt);
-			$stmt->bindParam(6, $ref);
-			$stmt->bindParam(7, $rial);
-			$stmt->execute();
-			$oid = $db->LastInsertId();
+            $query = 'INSERT INTO `resello` (`id` ,`customer` ,`amount` ,`ip` ,`status` ,`recipt` ,`reference` ,`irr`) VALUES (NULL ,?,?,?,?,?,?,?)';
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(1, $customer);
+            $stmt->bindParam(2, $amount);
+            $stmt->bindParam(3, $ip);
+            $stmt->bindParam(4, $status);
+            $stmt->bindParam(5, $recipt);
+            $stmt->bindParam(6, $ref);
+            $stmt->bindParam(7, $rial);
+            $stmt->execute();
+            $oid = $db->LastInsertId();
             if ($stmt->rowCount() == 1) {
-				$client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
-				$result = $client->PaymentRequest([
-					'MerchantID'    => $merchantCode,
-					'Amount'        => $rial,
-					'Description'   => $customer.' - '.$oid,
-					'Email'         => null,
-					'Mobile'        => null,
-					'CallbackURL'   => $callback,
-				]);
+                $client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
+                $result = $client->PaymentRequest([
+                    'MerchantID'    => $merchantCode,
+                    'Amount'        => $rial,
+                    'Description'   => $customer.' - '.$oid,
+                    'Email'         => null,
+                    'Mobile'        => null,
+                    'CallbackURL'   => $callback,
+                ]);
 
                 if ($result->Status == 100) {
                     header('Location: https://www.zarinpal.com/pg/StartPay/'.$result->Authority);
@@ -69,12 +69,12 @@ if (isset($_POST['reference']) && isset($_POST['currency']) && isset($_POST['amo
                     echo 'ERR: '.$result->Status;
                 }
             } else {
-				die('Data insert broken');
+                die('Data insert broken');
             }
         } else {
-			die('Signature is not valid');
+            die('Signature is not valid');
         }
     } else {
-		die('Err');
+        die('Err');
     }
 }
