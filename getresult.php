@@ -1,176 +1,154 @@
 <?php
 /**
- * @package    Resello custom payment gateway
  * @author     Ahmad Rajabi (Ahmad@rajabi.us)
  * @copyright  2016 Ahmad Rajabi
  */
-	require_once ("conf.php");
+    require_once 'conf.php';
 
   //check Get Data
-	function test_data($data){
+    function test_data($data)
+    {
+        $data = trim($data);
+        $data = stripslashes($data);
+        $data = htmlspecialchars($data);
 
-		 $data = trim($data);
-		 $data = stripslashes($data);
-		 $data = htmlspecialchars($data);
-		 return $data;
-
-	 }
+        return $data;
+    }
   //set variable
-		$Authority  = test_data($_GET['Authority']);
-		$status     = test_data($_GET['Status']);
-		$invoiceNum = test_data($_GET['oid']);
-    $st         = 'paid';
+        $Authority = test_data($_GET['Authority']);
+        $status = test_data($_GET['Status']);
+        $invoiceNum = test_data($_GET['oid']);
+    $st = 'paid';
   //signature fungtion
-   function sign($s, $s2, $fi) {
+   function sign($s, $s2, $fi)
+   {
+       $fi = implode('', $fi).$s;
 
-            $fi = implode('', $fi) . $s;
-            return hash_hmac('sha512', $fi, $s2);
-          }
+       return hash_hmac('sha512', $fi, $s2);
+   }
 
-    $query = "SELECT * FROM `resello` WHERE `id` = ?";
-    $stmt  = $db->prepare($query);
-    $stmt->bindParam(1,$invoiceNum);
+    $query = 'SELECT * FROM `resello` WHERE `id` = ?';
+    $stmt = $db->prepare($query);
+    $stmt->bindParam(1, $invoiceNum);
     $stmt->execute();
-    $row   = $stmt->fetch();
+    $row = $stmt->fetch();
 
     $reference = $row['reference'];
-    $damount   = $row['irr'];
-    $melissa   = array('reference'=>$reference ,'status'=>'AUTHORISED');
+    $damount = $row['irr'];
+    $melissa = ['reference' => $reference, 'status' => 'AUTHORISED'];
 
     $signature = sign($secret_key, $secret_key2, $melissa);
 
-    if($status == 'OK'){
+    if ($status == 'OK') {
+        $client = new SoapClient('https://de.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
 
-			$client = new SoapClient('https://de.zarinpal.com/pg/services/WebGate/wsdl', array('encoding' => 'UTF-8'));
-
-			$result = $client->PaymentVerification(
-							  	array(
-										'MerchantID'	 => $merchantCode,
-										'Authority' 	 => $Authority,
-										'Amount'	     => $damount
-									)
-			);
-			if($result->Status == 100){
-
-    	     $f = array(
+        $result = $client->PaymentVerification(
+                                [
+                                        'MerchantID'     => $merchantCode,
+                                        'Authority'      => $Authority,
+                                        'Amount'         => $damount,
+                                    ]
+            );
+        if ($result->Status == 100) {
+            $f = [
                   'reference' => $reference,
                   'status'    => 'AUTHORISED',
-                  'signature' => $signature
-                );
+                  'signature' => $signature,
+                ];
 
-        $fields_string = '';
+            $fields_string = '';
 
-          foreach($f as $key=>$value) {
+            foreach ($f as $key => $value) {
+                $fields_string .= $key.'='.$value.'&';
+            }
 
-                  $fields_string .= $key . '=' . $value . '&';
+
+            $f_s = rtrim($fields_string, '&');
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $notify);
+            curl_setopt($ch, CURLOPT_POST, count($f));
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $f_s);
+            $curl = curl_exec($ch);
+            curl_close($ch);
+
+            if ($curl) {
+                $q = 'UPDATE `resello` SET `status` = ? , `recipt` = ? WHERE `id` = ?';
+                $stm = $db->prepare($q);
+                $stm->bindParam(1, $st);
+                $stm->bindParam(2, $result->RefID);
+                $stm->bindParam(3, $invoiceNum);
+                $r = $stm->execute();
+
+                if ($r) {
+                    echo 'Your payment has been successful and your transaction id is : '.$result->RefID.'<br/><br/>';
+                    echo "Please click <a href=\"$url\">here</a> to back to your cutomer panel";
+                } else {
+                    die('query failed , please contact system admin');
                 }
+            } else {
+                die('Curl error , please contact system admin . ERR = 1');
+            }
+        } else {
+            $mahak = ['reference' => $reference, 'status' => 'FAILED'];
+
+            $signature = sign($secret_key, $secret_key2, $mahak);
 
 
-        $f_s = rtrim($fields_string, '&');
-        $ch  = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $notify);
-        curl_setopt($ch, CURLOPT_POST, count($f));
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $f_s);
-        $curl = curl_exec($ch);
-        curl_close($ch);
+            $f = [
 
-        if($curl){
+                  'reference' => $reference,
+                  'status'    => 'FAILED',
+                  'signature' => $signature,
+                ];
 
-        	$q   = "UPDATE `resello` SET `status` = ? , `recipt` = ? WHERE `id` = ?";
-        	$stm = $db->prepare($q);
-        	$stm->bindParam(1,$st);
-        	$stm->bindParam(2,$result->RefID);
-        	$stm->bindParam(3,$invoiceNum);
-        	$r   = $stm->execute();
+            $fields_string = '';
 
-        	if($r){
+            foreach ($f as $key => $value) {
+                $fields_string .= $key.'='.$value.'&';
+            }
 
-                echo "Your payment has been successful and your transaction id is : " . $result->RefID ."<br/><br/>";
-                echo "Please click <a href=\"$url\">here</a> to back to your cutomer panel";
-
-
-        	}else{
-
-        		die("query failed , please contact system admin");
-        	}
-
-
-
-        }else{
-
-        	die("Curl error , please contact system admin . ERR = 1");
+            $f_s = rtrim($fields_string, '&');
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $notify);
+            curl_setopt($ch, CURLOPT_POST, count($f));
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $f_s);
+            $curl = curl_exec($ch);
+            curl_close($ch);
+            if ($curl) {
+                header("Location: $url");
+            } else {
+                die('Curl error , please contact system admin . ERR = 2');
+            }
         }
-
-
-
-    }else{
-
-
-        $mahak     = array('reference'=>$reference ,'status'=>'FAILED');
+    } else {
+        $mahak = ['reference' => $reference, 'status' => 'FAILED'];
 
         $signature = sign($secret_key, $secret_key2, $mahak);
 
 
-    	    	$f = array(
+        $f = [
 
-                  'reference' => $reference,
-                  'status'    => 'FAILED',
-                  'signature' => $signature
-                );
+                             'reference' => $reference,
+                             'status'    => 'FAILED',
+                             'signature' => $signature,
+                         ];
 
         $fields_string = '';
 
-          foreach($f as $key=>$value) {
-
-                  $fields_string .= $key . '=' . $value . '&';
-                }
+        foreach ($f as $key => $value) {
+            $fields_string .= $key.'='.$value.'&';
+        }
 
         $f_s = rtrim($fields_string, '&');
-        $ch  = curl_init();
+        $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $notify);
         curl_setopt($ch, CURLOPT_POST, count($f));
         curl_setopt($ch, CURLOPT_POSTFIELDS, $f_s);
         $curl = curl_exec($ch);
         curl_close($ch);
-        if($curl){
-        	header("Location: $url");
-        }else{
-        	die("Curl error , please contact system admin . ERR = 2");
+        if ($curl) {
+            header("Location: $url");
+        } else {
+            die('Curl error , please contact system admin . ERR = 3');
         }
-     }
-	 }else{
-
-		 $mahak     = array('reference'=>$reference ,'status'=>'FAILED');
-
-		 $signature = sign($secret_key, $secret_key2, $mahak);
-
-
-				 $f = array(
-
-							 'reference' => $reference,
-							 'status'    => 'FAILED',
-							 'signature' => $signature
-						 );
-
-		 $fields_string = '';
-
-			 foreach($f as $key=>$value) {
-
-							 $fields_string .= $key . '=' . $value . '&';
-						 }
-
-		 $f_s = rtrim($fields_string, '&');
-		 $ch  = curl_init();
-		 curl_setopt($ch, CURLOPT_URL, $notify);
-		 curl_setopt($ch, CURLOPT_POST, count($f));
-		 curl_setopt($ch, CURLOPT_POSTFIELDS, $f_s);
-		 $curl = curl_exec($ch);
-		 curl_close($ch);
-		 if($curl){
-			 header("Location: $url");
-		 }else{
-			 die("Curl error , please contact system admin . ERR = 3");
-		 }
-
-	 }
-?>
+    }
