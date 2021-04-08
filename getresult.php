@@ -2,7 +2,7 @@
 /**
  * @package    Resello custom payment gateway
  * @author     Ahmad Rajabi & Armin Zahedi
- * @copyright  2021 Ahmad Rajabi
+ * @copyright  2016 Ahmad Rajabi
  */
 require_once ("conf.php");
 
