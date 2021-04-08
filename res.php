@@ -2,7 +2,7 @@
 /**
  * @package    Resello custom payment gateway
  * @author     Ahmad Rajabi & Armin Zahedi
- * @copyright  2016 Ahmad Rajabi
+ * @copyright  2021 Ahmad Rajabi
  */
 require_once("conf.php");
 // checked all fields to set value
@@ -121,7 +121,15 @@ if(isset($_POST['reference']) && isset($_POST['currency']) && isset($_POST['amou
 
                 if($result['data']['code'] == 100)
                 {
-                    Header('Location: https://www.zarinpal.com/pg/StartPay/'.$result['data']["authority"]);
+                    echo' <html><body>
+                    <script type="text/javascript" src="https://cdn.zarinpal.com/zarinak/v1/checkout.js"></script>
+                    <script type="text/javascript">
+                    window.onload = function () {
+                    Zarinak.setAuthority("' . $result['data']['authority'] . '");
+                    Zarinak.showQR();
+                    Zarinak.open();
+    };
+</script></body></html>';
                 } else {
                     echo'ERR: '.$result['errors']['code'];
                 }
